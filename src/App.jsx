@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const templates = [
   {
@@ -31,6 +31,9 @@ const shippingOptions = [
 
 const defaultSimilarResult =
   "Top match: Catan-style strategy (resource trading + map control)";
+const storageKey = "boardforge-orders";
+const stripePaymentLink = import.meta.env.VITE_STRIPE_PAYMENT_LINK || "";
+const orderWebhookUrl = import.meta.env.VITE_ORDER_WEBHOOK_URL || "";
 
 function App() {
   const [selectedTemplate, setSelectedTemplate] = useState(templates[0]);
@@ -46,8 +49,31 @@ function App() {
     type: "",
     message: "",
   });
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [webhookStatus, setWebhookStatus] = useState("");
 
   const orderFormRef = useRef(null);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(storageKey);
+    if (!stored) return;
+
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setRecentOrders(parsed);
+      }
+    } catch (error) {
+      console.error("Could not parse saved orders:", error);
+    }
+  }, []);
+
+  const saveOrderLocally = (orderPayload) => {
+    const nextOrders = [orderPayload, ...recentOrders].slice(0, 20);
+    setRecentOrders(nextOrders);
+    window.localStorage.setItem(storageKey, JSON.stringify(nextOrders));
+  };
 
   const totalPrice = useMemo(() => {
     return (
@@ -89,7 +115,37 @@ function App() {
       : `Top match: ${selectedTemplate.name}-inspired structure with custom content.`;
   }, [similarSearch, selectedTemplate]);
 
-  const handlePlaceOrder = () => {
+  const formatOrderForCsv = (order) => {
+    const values = [
+      order.createdAt,
+      order.orderId,
+      order.status,
+      order.template,
+      order.total,
+      order.recipientName,
+      order.recipientEmail,
+      order.shippingSpeed,
+      order.giftMessage,
+    ];
+    return values.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",");
+  };
+
+  const handleDownloadOrdersCsv = () => {
+    if (recentOrders.length === 0) return;
+    const header =
+      "createdAt,orderId,status,template,total,recipientName,recipientEmail,shippingSpeed,giftMessage";
+    const rows = recentOrders.map(formatOrderForCsv);
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "boardforge-orders.csv";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePlaceOrder = async () => {
     const name = recipientName.trim();
     const email = recipientEmail.trim();
     const hasMessage = giftMessage.trim().length > 0;
@@ -104,17 +160,66 @@ function App() {
       return;
     }
 
-    setOrderFeedback({
-      type: "success",
-      message: `Order queued: ${selectedTemplate.name} gift for ${name}. Estimated total $${totalPrice.toFixed(
-        2
-      )}. Confirmation and tracking simulation sent to ${email}.`,
-    });
+    if (!stripePaymentLink) {
+      setOrderFeedback({
+        type: "error",
+        message:
+          "Checkout is not configured yet. Add VITE_STRIPE_PAYMENT_LINK in .env to activate payments.",
+      });
+      return;
+    }
+
+    const orderPayload = {
+      createdAt: new Date().toISOString(),
+      orderId: `BG-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+      status: "pending_payment",
+      template: selectedTemplate.name,
+      total: totalPrice.toFixed(2),
+      recipientName: name,
+      recipientEmail: email,
+      shippingSpeed: shippingSpeed.name,
+      giftMessage: giftMessage.trim(),
+    };
+
+    setIsSubmittingOrder(true);
+    setWebhookStatus("");
+    saveOrderLocally(orderPayload);
+
+    try {
+      if (orderWebhookUrl) {
+        // Apps Script web apps often do not return CORS headers for browser fetch.
+        // Using no-cors + text/plain avoids preflight and still delivers the payload.
+        await fetch(orderWebhookUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(orderPayload),
+        });
+        setWebhookStatus("Order payload sent to Google Sheets webhook.");
+      }
+
+      const redirectUrl = new URL(stripePaymentLink);
+      redirectUrl.searchParams.set("prefilled_email", email);
+      redirectUrl.searchParams.set("client_reference_id", orderPayload.orderId);
+      window.location.assign(redirectUrl.toString());
+    } catch (error) {
+      console.error(error);
+      setOrderFeedback({
+        type: "error",
+        message:
+          "Could not connect to payment services. Please try again in a moment.",
+      });
+      setWebhookStatus("");
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
 
   return (
     <>
       <header className="hero">
+        <div className="hero-glow hero-glow-left" />
+        <div className="hero-glow hero-glow-right" />
         <nav className="top-nav">
           <div className="brand">BoardForge Gifts</div>
           <button className="nav-btn" type="button">
@@ -133,6 +238,20 @@ function App() {
           <a className="cta" href="#templates">
             Start Designing
           </a>
+          <div className="hero-metrics">
+            <div>
+              <strong>4.9/5</strong>
+              <span>Gift joy score</span>
+            </div>
+            <div>
+              <strong>2-4 days</strong>
+              <span>Production turnaround</span>
+            </div>
+            <div>
+              <strong>1-click pay</strong>
+              <span>Stripe checkout</span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -326,8 +445,13 @@ function App() {
                 ))}
               </select>
             </div>
-            <button className="cta" type="button" onClick={handlePlaceOrder}>
-              Place MVP Order
+            <button
+              className="cta"
+              type="button"
+              onClick={handlePlaceOrder}
+              disabled={isSubmittingOrder}
+            >
+              {isSubmittingOrder ? "Preparing Checkout..." : "Pay Securely"}
             </button>
             <p
               className={`order-feedback muted ${
@@ -342,6 +466,46 @@ function App() {
             >
               {orderFeedback.message}
             </p>
+            <p className="muted">
+              Orders are saved locally for backup and can also be posted to your
+              webhook (Google Sheets Apps Script) if configured.
+            </p>
+            {webhookStatus ? <p className="muted success">{webhookStatus}</p> : null}
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="card">
+            <h2>Order tracking snapshot</h2>
+            <p className="section-copy">
+              Keep a lightweight order log now; import CSV into Google Sheets any
+              time.
+            </p>
+            <button
+              className="nav-btn dark"
+              type="button"
+              onClick={handleDownloadOrdersCsv}
+              disabled={recentOrders.length === 0}
+            >
+              Download Orders CSV
+            </button>
+            <ul className="order-list">
+              {recentOrders.length === 0 ? (
+                <li className="muted">No orders saved yet.</li>
+              ) : (
+                recentOrders.map((order) => (
+                  <li key={order.orderId}>
+                    <div>
+                      <strong>{order.orderId}</strong> - {order.template}
+                    </div>
+                    <div className="muted">
+                      ${order.total} | {order.recipientName} |{" "}
+                      {order.shippingSpeed}
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
           </div>
         </section>
 
@@ -361,7 +525,8 @@ function App() {
 
       <footer className="footer">
         <small>
-          Prototype only. No live payment or shipping transactions are executed.
+          Set `VITE_STRIPE_PAYMENT_LINK` and optionally
+          `VITE_ORDER_WEBHOOK_URL` to activate checkout + order tracking.
         </small>
       </footer>
     </>
