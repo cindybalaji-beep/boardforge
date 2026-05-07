@@ -377,10 +377,10 @@ main h2 {
 
 .uno-demo-card-custom .uno-demo-dog-overlay {
   position: absolute;
-  width: 44%;
-  height: 38%;
-  left: 28%;
-  top: 31%;
+  width: 56%;
+  height: 48%;
+  left: 22%;
+  top: 26%;
   object-fit: cover;
   border-radius: 999px;
   border: 4px solid #ffffff;
