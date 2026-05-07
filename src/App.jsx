@@ -2,6 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const templates = [
   {
+    name: "Uno",
+    price: 49,
+    description: "Fast card-play game with custom action cards and themes.",
+  },
+  {
     name: "Cards Against Humanity",
     price: 59,
     description: "Party cards, custom prompts, hilarious inside jokes.",
@@ -16,12 +21,9 @@ const templates = [
     price: 74,
     description: "Route-building gameplay with personalized maps/cities.",
   },
-  {
-    name: "Uno",
-    price: 49,
-    description: "Fast card-play game with custom action cards and themes.",
-  },
 ];
+
+const [featuredTemplate, ...otherTemplates] = templates;
 
 const shippingOptions = [
   { name: "Economy", value: 8 },
@@ -34,6 +36,8 @@ const defaultSimilarResult =
 const storageKey = "boardforge-orders";
 const stripePaymentLink = import.meta.env.VITE_STRIPE_PAYMENT_LINK || "";
 const orderWebhookUrl = import.meta.env.VITE_ORDER_WEBHOOK_URL || "";
+const hasStripeLink = Boolean(stripePaymentLink.trim());
+const hasOrderWebhook = Boolean(orderWebhookUrl.trim());
 
 function App() {
   const [selectedTemplate, setSelectedTemplate] = useState(templates[0]);
@@ -160,11 +164,11 @@ function App() {
       return;
     }
 
-    if (!stripePaymentLink) {
+    if (!stripePaymentLink.trim()) {
       setOrderFeedback({
         type: "error",
         message:
-          "Checkout is not configured yet. Add VITE_STRIPE_PAYMENT_LINK in .env to activate payments.",
+          "Stripe checkout is not wired up for this deployment. Add VITE_STRIPE_PAYMENT_LINK in Vercel (or .env locally), then redeploy / restart dev.",
       });
       return;
     }
@@ -262,19 +266,35 @@ function App() {
             Pick one of the MVP inspirations, then personalize every detail.
           </p>
           <div className="template-grid">
-            {templates.map((template) => (
-              <article
-                key={template.name}
-                className={`card template-card ${
-                  selectedTemplate.name === template.name ? "selected" : ""
-                }`}
-                onClick={() => setSelectedTemplate(template)}
-              >
-                <h3>{template.name}</h3>
-                <p>{template.description}</p>
-                <span className="tag">Starting at ${template.price}</span>
-              </article>
-            ))}
+            <article
+              key={featuredTemplate.name}
+              className={`card template-card template-card-featured ${
+                selectedTemplate.name === featuredTemplate.name ? "selected" : ""
+              }`}
+              onClick={() => setSelectedTemplate(featuredTemplate)}
+            >
+              <h3 className="template-card-title">{featuredTemplate.name}</h3>
+              <p>{featuredTemplate.description}</p>
+              <span className="tag">Starting at ${featuredTemplate.price}</span>
+            </article>
+            <div className="template-grid-secondary">
+              {otherTemplates.map((template) => (
+                <article
+                  key={template.name}
+                  className={`card template-card ${
+                    selectedTemplate.name === template.name ? "selected" : ""
+                  }`}
+                  onClick={() => setSelectedTemplate(template)}
+                >
+                  <div className="template-card-heading">
+                    <h3>{template.name}</h3>
+                    <span className="coming-soon-pill">Coming Soon</span>
+                  </div>
+                  <p>{template.description}</p>
+                  <span className="tag">Starting at ${template.price}</span>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -383,8 +403,12 @@ function App() {
                 })
               }
             >
-              Continue to Checkout
+              Continue to recipient form
             </button>
+            <p className="muted checkout-hint">
+              Opens the section below. Stripe opens only after you fill the form and
+              click Pay Securely.
+            </p>
           </div>
         </section>
 
@@ -392,8 +416,43 @@ function App() {
           <div className="card order-form-card" ref={orderFormRef}>
             <h2>Recipient + checkout info</h2>
             <p className="section-copy">
-              This MVP simulates checkout and order placement in-browser.
+              Fill in all fields, then use Pay Securely to send the order to your
+              webhook (if set) and redirect to Stripe Checkout.
             </p>
+            {!hasStripeLink || !hasOrderWebhook ? (
+              <div className="config-banner" role="status">
+                <strong>Live setup status</strong>
+                <ul>
+                  <li>
+                    Stripe payment link:{" "}
+                    {hasStripeLink ? (
+                      <span className="config-ok">configured</span>
+                    ) : (
+                      <span className="config-bad">
+                        missing — set{" "}
+                        <code>VITE_STRIPE_PAYMENT_LINK</code> on Vercel and redeploy
+                      </span>
+                    )}
+                  </li>
+                  <li>
+                    Google Sheet webhook:{" "}
+                    {hasOrderWebhook ? (
+                      <span className="config-ok">configured</span>
+                    ) : (
+                      <span className="config-bad">
+                        missing — set <code>VITE_ORDER_WEBHOOK_URL</code> on Vercel and
+                        redeploy
+                      </span>
+                    )}
+                  </li>
+                </ul>
+                <p className="config-banner-note">
+                  Vite reads these at <strong>build</strong> time. Changing only{" "}
+                  <code>.env</code> on your laptop does not update the hosted site until
+                  the variables exist in Vercel and you trigger a new build.
+                </p>
+              </div>
+            ) : null}
             <div className="form-row">
               <label htmlFor="recipient-name">Recipient name</label>
               <input
@@ -451,7 +510,7 @@ function App() {
               onClick={handlePlaceOrder}
               disabled={isSubmittingOrder}
             >
-              {isSubmittingOrder ? "Preparing Checkout..." : "Pay Securely"}
+              {isSubmittingOrder ? "Preparing Checkout..." : "Pay Securely (Stripe)"}
             </button>
             <p
               className={`order-feedback muted ${
