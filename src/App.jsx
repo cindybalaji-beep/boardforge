@@ -134,20 +134,14 @@ const shippingOptions = [
   { name: "Expedited", value: 24 },
 ];
 
-const defaultSimilarResult =
-  "Top match: Catan-style strategy (resource trading + map control)";
 const storageKey = "boardforge-orders";
 const stripePaymentLink = import.meta.env.VITE_STRIPE_PAYMENT_LINK || "";
 const orderWebhookUrl = import.meta.env.VITE_ORDER_WEBHOOK_URL || "";
-const hasStripeLink = Boolean(stripePaymentLink.trim());
-const hasOrderWebhook = Boolean(orderWebhookUrl.trim());
+const dogPosePrompts = ["Playful jump", "Puppy side-eye", "Victory tail wag"];
+const numberCardValues = [3, 7, 9];
 
 function App() {
   const [selectedTemplate, setSelectedTemplate] = useState(templates[0]);
-  const [boardSize, setBoardSize] = useState(0);
-  const [cardCount, setCardCount] = useState(0);
-  const [premiumBox, setPremiumBox] = useState(false);
-  const [similarSearch, setSimilarSearch] = useState("");
   const [shippingSpeed, setShippingSpeed] = useState(shippingOptions[0]);
   const [recipientName, setRecipientName] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
@@ -160,11 +154,26 @@ function App() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [webhookStatus, setWebhookStatus] = useState("");
   const [unoStudio, setUnoStudio] = useState(defaultUnoStudio);
+  const [uploadedDogImages, setUploadedDogImages] = useState([]);
 
   const orderFormRef = useRef(null);
 
   const updateUnoStudio = (patch) => {
     setUnoStudio((prev) => ({ ...prev, ...patch }));
+  };
+
+  const handleDogImageUpload = (event) => {
+    const files = Array.from(event.target.files || []).slice(0, 3);
+    if (files.length === 0) return;
+
+    setUploadedDogImages((previous) => {
+      previous.forEach((img) => URL.revokeObjectURL(img.url));
+      return files.map((file, index) => ({
+        id: `${file.name}-${index}-${file.lastModified}`,
+        url: URL.createObjectURL(file),
+        name: file.name,
+      }));
+    });
   };
 
   useEffect(() => {
@@ -181,6 +190,12 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      uploadedDogImages.forEach((img) => URL.revokeObjectURL(img.url));
+    };
+  }, [uploadedDogImages]);
+
   const saveOrderLocally = (orderPayload) => {
     const nextOrders = [orderPayload, ...recentOrders].slice(0, 20);
     setRecentOrders(nextOrders);
@@ -188,44 +203,8 @@ function App() {
   };
 
   const totalPrice = useMemo(() => {
-    return (
-      selectedTemplate.price +
-      boardSize +
-      cardCount +
-      (premiumBox ? 9 : 0) +
-      shippingSpeed.value
-    );
-  }, [selectedTemplate, boardSize, cardCount, premiumBox, shippingSpeed]);
-
-  const similarResult = useMemo(() => {
-    const term = similarSearch.trim().toLowerCase();
-    if (!term) {
-      return defaultSimilarResult;
-    }
-
-    const gameSignals = [
-      {
-        key: "monopoly",
-        result:
-          "Top match: Ticket to Ride-style progression and route ownership.",
-      },
-      {
-        key: "dominion",
-        result: "Top match: Cards Against Humanity-style deck-driven card flow.",
-      },
-      {
-        key: "pandemic",
-        result:
-          "Top match: Catan-style cooperative planning with shared goals.",
-      },
-      { key: "uno", result: "Top match: Uno-style quick rounds and action cards." },
-    ];
-
-    const found = gameSignals.find((signal) => term.includes(signal.key));
-    return found
-      ? found.result
-      : `Top match: ${selectedTemplate.name}-inspired structure with custom content.`;
-  }, [similarSearch, selectedTemplate]);
+    return selectedTemplate.price + shippingSpeed.value;
+  }, [selectedTemplate, shippingSpeed]);
 
   const formatOrderForCsv = (order) => {
     const values = [
@@ -537,53 +516,47 @@ function App() {
         </section>
 
         <section className="section config-grid">
-          <div className="card">
-            <h2>Customize components</h2>
-            <label htmlFor="similar-search">Find a similar game style</label>
-            <input
-              id="similar-search"
-              type="search"
-              placeholder="Search examples: Monopoly, Dominion, Pandemic"
-              value={similarSearch}
-              onChange={(event) => setSimilarSearch(event.target.value)}
-            />
-            <p className="muted">{similarResult}</p>
-
+          <div className="card dog-cards-studio">
+            <h2>Upload number card photos</h2>
+            <p className="section-copy">
+              Upload up to 3 family-dog photos from your computer and preview how
+              they can replace art on Uno number cards.
+            </p>
             <div className="form-row">
-              <label htmlFor="board-size">Board size</label>
-              <select
-                id="board-size"
-                value={boardSize}
-                onChange={(event) => setBoardSize(Number(event.target.value))}
-              >
-                <option value={0}>Standard (included)</option>
-                <option value={12}>Large (+$12)</option>
-                <option value={20}>Premium fold-out (+$20)</option>
-              </select>
+              <label htmlFor="dog-card-upload">Choose photos (JPG, PNG, WEBP)</label>
+              <input
+                id="dog-card-upload"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                onChange={handleDogImageUpload}
+              />
             </div>
-
-            <div className="form-row">
-              <label htmlFor="card-count">Card count</label>
-              <select
-                id="card-count"
-                value={cardCount}
-                onChange={(event) => setCardCount(Number(event.target.value))}
-              >
-                <option value={0}>Base deck (included)</option>
-                <option value={10}>+50 cards (+$10)</option>
-                <option value={18}>+100 cards (+$18)</option>
-              </select>
-            </div>
-
-            <div className="form-row">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={premiumBox}
-                  onChange={(event) => setPremiumBox(event.target.checked)}
-                />{" "}
-                Premium gift box (+$9)
-              </label>
+            <div className="dog-card-grid">
+              {numberCardValues.map((value, index) => {
+                const image = uploadedDogImages[index];
+                return (
+                  <article key={value} className="dog-number-card">
+                    {image ? (
+                      <img
+                        src={image.url}
+                        alt={`Custom dog pose for number ${value}`}
+                        className="dog-number-card-image"
+                      />
+                    ) : (
+                      <div className="dog-number-card-placeholder">
+                        <span className="dog-number-card-emoji">🐶</span>
+                        <span>{dogPosePrompts[index]}</span>
+                        <small>Upload your family dog photo</small>
+                      </div>
+                    )}
+                    <span className="dog-number-card-value">{value}</span>
+                    <div className="dog-number-card-caption">
+                      {image?.name || `Example: ${dogPosePrompts[index]}`}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
 
@@ -657,40 +630,6 @@ function App() {
               Fill in all fields, then use Pay Securely to send the order to your
               webhook (if set) and redirect to Stripe Checkout.
             </p>
-            {!hasStripeLink || !hasOrderWebhook ? (
-              <div className="config-banner" role="status">
-                <strong>Live setup status</strong>
-                <ul>
-                  <li>
-                    Stripe payment link:{" "}
-                    {hasStripeLink ? (
-                      <span className="config-ok">configured</span>
-                    ) : (
-                      <span className="config-bad">
-                        missing — set{" "}
-                        <code>VITE_STRIPE_PAYMENT_LINK</code> on Vercel and redeploy
-                      </span>
-                    )}
-                  </li>
-                  <li>
-                    Google Sheet webhook:{" "}
-                    {hasOrderWebhook ? (
-                      <span className="config-ok">configured</span>
-                    ) : (
-                      <span className="config-bad">
-                        missing — set <code>VITE_ORDER_WEBHOOK_URL</code> on Vercel and
-                        redeploy
-                      </span>
-                    )}
-                  </li>
-                </ul>
-                <p className="config-banner-note">
-                  Vite reads these at <strong>build</strong> time. Changing only{" "}
-                  <code>.env</code> on your laptop does not update the hosted site until
-                  the variables exist in Vercel and you trigger a new build.
-                </p>
-              </div>
-            ) : null}
             <div className="form-row">
               <label htmlFor="recipient-name">Recipient name</label>
               <input

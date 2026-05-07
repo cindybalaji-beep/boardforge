@@ -323,6 +323,99 @@ main h2 {
   gap: 14px;
 }
 
+.dog-cards-studio input[type="file"] {
+  width: 100%;
+  border: 2px dashed #f97316;
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff7ed;
+  font: inherit;
+}
+
+.dog-card-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dog-number-card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 220px;
+  border: 3px solid #ffffff;
+  box-shadow: 0 14px 30px rgba(30, 41, 59, 0.18);
+  background: linear-gradient(135deg, #facc15, #fb7185);
+}
+
+.dog-number-card-image {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+.dog-number-card-placeholder {
+  min-height: 220px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 16px;
+  font-weight: 700;
+  color: #4c1d95;
+  background: linear-gradient(145deg, #fef3c7, #ddd6fe);
+}
+
+.dog-number-card-emoji {
+  font-size: 2rem;
+}
+
+.dog-number-card-placeholder small {
+  font-weight: 600;
+  color: #7c2d12;
+}
+
+.dog-number-card-value {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-family: Fredoka, Nunito, sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: #ffffff;
+  background: rgba(219, 39, 119, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.dog-number-card-caption {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 label {
   display: block;
   margin: 11px 0 5px;
@@ -773,6 +866,10 @@ textarea {
   }
 
   .uno-studio-previews {
+    grid-template-columns: 1fr;
+  }
+
+  .dog-card-grid {
     grid-template-columns: 1fr;
   }
 }
