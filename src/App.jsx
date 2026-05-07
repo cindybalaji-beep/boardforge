@@ -161,6 +161,7 @@ function App() {
   const updateUnoStudio = (patch) => {
     setUnoStudio((prev) => ({ ...prev, ...patch }));
   };
+  const exampleCardImage = uploadedDogImages[0]?.url || "/puppy-example.png";
 
   const handleDogImageUpload = (event) => {
     const files = Array.from(event.target.files || []).slice(0, 3);
@@ -522,15 +523,28 @@ function App() {
               Upload up to 3 family-dog photos from your computer and preview how
               they can replace art on Uno number cards.
             </p>
-            <div className="form-row">
-              <label htmlFor="dog-card-upload">Choose photos (JPG, PNG, WEBP)</label>
-              <input
-                id="dog-card-upload"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                multiple
-                onChange={handleDogImageUpload}
-              />
+            <div className="dog-upload-layout">
+              <div className="form-row dog-upload-controls">
+                <label htmlFor="dog-card-upload">Choose photos (JPG, PNG, WEBP)</label>
+                <input
+                  id="dog-card-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  multiple
+                  onChange={handleDogImageUpload}
+                />
+              </div>
+              <article className="dog-number-card dog-number-card-example">
+                <img
+                  src={exampleCardImage}
+                  alt="Playful jumping puppy example on Uno number card 3"
+                  className="dog-number-card-image"
+                />
+                <span className="dog-number-card-value">3</span>
+                <div className="dog-number-card-caption">
+                  Example card: number 3
+                </div>
+              </article>
             </div>
             <div className="dog-card-grid">
               {numberCardValues.map((value, index) => {

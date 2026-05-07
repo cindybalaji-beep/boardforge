@@ -332,6 +332,26 @@ main h2 {
   font: inherit;
 }
 
+.dog-upload-layout {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(190px, 0.8fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.dog-upload-controls {
+  margin-top: 0;
+}
+
+.dog-number-card-example {
+  min-height: 140px;
+}
+
+.dog-number-card-placeholder-example {
+  min-height: 140px;
+}
+
 .dog-card-grid {
   margin-top: 14px;
   display: grid;
@@ -870,6 +890,10 @@ textarea {
   }
 
   .dog-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dog-upload-layout {
     grid-template-columns: 1fr;
   }
 }
