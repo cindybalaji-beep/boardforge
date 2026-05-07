@@ -139,6 +139,8 @@ const stripePaymentLink = import.meta.env.VITE_STRIPE_PAYMENT_LINK || "";
 const orderWebhookUrl = import.meta.env.VITE_ORDER_WEBHOOK_URL || "";
 const dogPosePrompts = ["Playful jump", "Puppy side-eye", "Victory tail wag"];
 const numberCardValues = [3, 7, 9];
+const unoCardOneImage = "/uno-card-one.png";
+const dogReplaceOneImage = "/dog-replace-one.png";
 
 function App() {
   const [selectedTemplate, setSelectedTemplate] = useState(templates[0]);
@@ -161,7 +163,6 @@ function App() {
   const updateUnoStudio = (patch) => {
     setUnoStudio((prev) => ({ ...prev, ...patch }));
   };
-  const exampleCardImage = uploadedDogImages[0]?.url || "/puppy-example.png";
 
   const handleDogImageUpload = (event) => {
     const files = Array.from(event.target.files || []).slice(0, 3);
@@ -534,17 +535,21 @@ function App() {
                   onChange={handleDogImageUpload}
                 />
               </div>
-              <article className="dog-number-card dog-number-card-example">
-                <img
-                  src={exampleCardImage}
-                  alt="Playful jumping puppy example on Uno number card 3"
-                  className="dog-number-card-image"
-                />
-                <span className="dog-number-card-value">3</span>
-                <div className="dog-number-card-caption">
-                  Example card: number 3
-                </div>
-              </article>
+              <div className="uno-replace-demo">
+                <article className="uno-demo-card">
+                  <img src={unoCardOneImage} alt="Original Uno number 1 card" />
+                  <p>Original Uno 1</p>
+                </article>
+                <article className="uno-demo-card uno-demo-card-custom">
+                  <img src={unoCardOneImage} alt="Uno number 1 card with dog replacing the one" />
+                  <img
+                    src={dogReplaceOneImage}
+                    alt="Dog photo replacing the center number"
+                    className="uno-demo-dog-overlay"
+                  />
+                  <p>1 replaced with your dog</p>
+                </article>
+              </div>
             </div>
             <div className="dog-card-grid">
               {numberCardValues.map((value, index) => {
