@@ -25,6 +25,109 @@ const templates = [
 
 const [featuredTemplate, ...otherTemplates] = templates;
 
+const unoThemeOptions = [
+  { id: "red", label: "Cherry" },
+  { id: "blue", label: "Bolt" },
+  { id: "yellow", label: "Sunny" },
+  { id: "green", label: "Lime" },
+];
+
+const unoThemeColors = {
+  red: { main: "#e11d48", light: "#ffe4e6" },
+  blue: { main: "#2563eb", light: "#dbeafe" },
+  yellow: { main: "#ca8a04", light: "#fef9c3" },
+  green: { main: "#15803d", light: "#dcfce7" },
+};
+
+const defaultUnoStudio = {
+  deckName: "The Smith Crew",
+  wildRule: "Pick any color — next player draws two and tells a joke!",
+  drawFourNote: "Drop four cards and your best dramatic gasp.",
+  reverseNote: "Turn order flips. Blame the family dog.",
+  skipNote: "Skip whoever hogs the playlist.",
+  theme: "red",
+};
+
+function UnoPreviewCard({ variant, deckName, wildRule, drawFourNote, reverseNote, skipNote, themeKey }) {
+  const t = unoThemeColors[themeKey] || unoThemeColors.red;
+  const footer = (
+    <div className="uno-preview-footer">
+      <span className="uno-preview-deck">{deckName || "Your deck name"}</span>
+    </div>
+  );
+
+  const label =
+    variant === "wild"
+      ? "Wild card"
+      : variant === "drawFour"
+      ? "Wild draw four"
+      : variant === "reverse"
+      ? "Reverse"
+      : "Skip";
+
+  let face = null;
+  if (variant === "wild") {
+    face = (
+      <div className="uno-preview-card-face uno-preview-card-face--wild">
+        <div className="uno-preview-wild-panel">
+          <span className="uno-preview-ribbon">WILD</span>
+          <p className="uno-preview-rule">{wildRule}</p>
+        </div>
+        {footer}
+      </div>
+    );
+  } else if (variant === "drawFour") {
+    face = (
+      <div
+        className="uno-preview-card-face uno-preview-card-face--drawfour"
+        style={{ "--uno-accent": t.main, "--uno-accent-soft": t.light }}
+      >
+        <div className="uno-preview-drawfour-mark">
+          <span className="uno-preview-big">+4</span>
+          <span className="uno-preview-drawfour-wild">WILD</span>
+        </div>
+        <p className="uno-preview-sub">{drawFourNote}</p>
+        {footer}
+      </div>
+    );
+  } else if (variant === "reverse") {
+    face = (
+      <div
+        className="uno-preview-card-face uno-preview-card-face--action"
+        style={{ background: `linear-gradient(145deg, ${t.main}, ${t.main}dd)` }}
+      >
+        <span className="uno-preview-action-title">REVERSE</span>
+        <span className="uno-preview-icon" aria-hidden="true">
+          ⇄
+        </span>
+        <p className="uno-preview-sub uno-preview-sub--on-color">{reverseNote}</p>
+        {footer}
+      </div>
+    );
+  } else {
+    face = (
+      <div
+        className="uno-preview-card-face uno-preview-card-face--action"
+        style={{ background: `linear-gradient(145deg, ${t.main}, ${t.main}cc)` }}
+      >
+        <span className="uno-preview-action-title">SKIP</span>
+        <span className="uno-preview-icon uno-preview-icon--skip" aria-hidden="true">
+          ⊘
+        </span>
+        <p className="uno-preview-sub uno-preview-sub--on-color">{skipNote}</p>
+        {footer}
+      </div>
+    );
+  }
+
+  return (
+    <div className="uno-preview-wrap">
+      <p className="uno-preview-type-label">{label}</p>
+      <div className={`uno-preview-card uno-preview-card--${variant}`}>{face}</div>
+    </div>
+  );
+}
+
 const shippingOptions = [
   { name: "Economy", value: 8 },
   { name: "Standard", value: 14 },
@@ -56,8 +159,13 @@ function App() {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [recentOrders, setRecentOrders] = useState([]);
   const [webhookStatus, setWebhookStatus] = useState("");
+  const [unoStudio, setUnoStudio] = useState(defaultUnoStudio);
 
   const orderFormRef = useRef(null);
+
+  const updateUnoStudio = (patch) => {
+    setUnoStudio((prev) => ({ ...prev, ...patch }));
+  };
 
   useEffect(() => {
     const stored = window.localStorage.getItem(storageKey);
@@ -239,9 +347,14 @@ function App() {
             Design online, preview in real time, pay with Stripe, and send with
             Shippo-powered carrier rates.
           </p>
-          <a className="cta" href="#templates">
-            Start Designing
-          </a>
+          <div className="hero-cta-row">
+            <a className="cta" href="#templates">
+              Start designing
+            </a>
+            <a className="cta cta-secondary" href="#uno-studio">
+              Try Uno previews
+            </a>
+          </div>
           <div className="hero-metrics">
             <div>
               <strong>4.9/5</strong>
@@ -294,6 +407,131 @@ function App() {
                   <span className="tag">Starting at ${template.price}</span>
                 </article>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="uno-studio" className="section uno-studio">
+          <div className="uno-studio-intro">
+            <span className="fun-badge">Uno · live preview</span>
+            <h2>Customize wild cards your way</h2>
+            <p className="section-copy">
+              Type your house rules, family name, and vibe — see how Wild, Draw Four,
+              Reverse, and Skip cards could look in print. This is a playful preview,
+              not final proofing.
+            </p>
+          </div>
+          <div className="uno-studio-layout">
+            <div className="card uno-studio-controls">
+              <h3 className="uno-studio-controls-title">Your deck details</h3>
+              <div className="form-row">
+                <label htmlFor="uno-deck-name">Deck / family name</label>
+                <input
+                  id="uno-deck-name"
+                  type="text"
+                  value={unoStudio.deckName}
+                  onChange={(e) => updateUnoStudio({ deckName: e.target.value })}
+                  placeholder="e.g. The Garcia Game Night"
+                  maxLength={48}
+                />
+              </div>
+              <div className="form-row">
+                <span className="uno-theme-label">Accent for action cards</span>
+                <div className="uno-theme-chips" role="group" aria-label="Card accent color">
+                  {unoThemeOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={`uno-theme-chip uno-theme-chip--${opt.id} ${
+                        unoStudio.theme === opt.id ? "selected" : ""
+                      }`}
+                      onClick={() => updateUnoStudio({ theme: opt.id })}
+                      aria-pressed={unoStudio.theme === opt.id}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="form-row">
+                <label htmlFor="uno-wild-rule">Wild card — custom rule text</label>
+                <textarea
+                  id="uno-wild-rule"
+                  rows={3}
+                  value={unoStudio.wildRule}
+                  onChange={(e) => updateUnoStudio({ wildRule: e.target.value })}
+                  placeholder="What happens when someone plays a Wild?"
+                  maxLength={160}
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="uno-draw-four">Draw four — subtitle</label>
+                <input
+                  id="uno-draw-four"
+                  type="text"
+                  value={unoStudio.drawFourNote}
+                  onChange={(e) => updateUnoStudio({ drawFourNote: e.target.value })}
+                  maxLength={90}
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="uno-reverse">Reverse — subtitle</label>
+                <input
+                  id="uno-reverse"
+                  type="text"
+                  value={unoStudio.reverseNote}
+                  onChange={(e) => updateUnoStudio({ reverseNote: e.target.value })}
+                  maxLength={90}
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="uno-skip">Skip — subtitle</label>
+                <input
+                  id="uno-skip"
+                  type="text"
+                  value={unoStudio.skipNote}
+                  onChange={(e) => updateUnoStudio({ skipNote: e.target.value })}
+                  maxLength={90}
+                />
+              </div>
+            </div>
+            <div className="uno-studio-previews">
+              <UnoPreviewCard
+                variant="wild"
+                deckName={unoStudio.deckName}
+                wildRule={unoStudio.wildRule}
+                drawFourNote={unoStudio.drawFourNote}
+                reverseNote={unoStudio.reverseNote}
+                skipNote={unoStudio.skipNote}
+                themeKey={unoStudio.theme}
+              />
+              <UnoPreviewCard
+                variant="drawFour"
+                deckName={unoStudio.deckName}
+                wildRule={unoStudio.wildRule}
+                drawFourNote={unoStudio.drawFourNote}
+                reverseNote={unoStudio.reverseNote}
+                skipNote={unoStudio.skipNote}
+                themeKey={unoStudio.theme}
+              />
+              <UnoPreviewCard
+                variant="reverse"
+                deckName={unoStudio.deckName}
+                wildRule={unoStudio.wildRule}
+                drawFourNote={unoStudio.drawFourNote}
+                reverseNote={unoStudio.reverseNote}
+                skipNote={unoStudio.skipNote}
+                themeKey={unoStudio.theme}
+              />
+              <UnoPreviewCard
+                variant="skip"
+                deckName={unoStudio.deckName}
+                wildRule={unoStudio.wildRule}
+                drawFourNote={unoStudio.drawFourNote}
+                reverseNote={unoStudio.reverseNote}
+                skipNote={unoStudio.skipNote}
+                themeKey={unoStudio.theme}
+              />
             </div>
           </div>
         </section>
